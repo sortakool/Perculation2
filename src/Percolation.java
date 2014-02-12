@@ -115,16 +115,16 @@ public class Percolation {
 
     private void validate(int i, int j) {
         if(i < 1) {
-            throw new IllegalArgumentException("Invalid row " + i);
+            throw new IndexOutOfBoundsException ("Invalid row " + i);
         }
         if(i > N) {
-            throw new IllegalArgumentException("Invalid row " + i);
+            throw new IndexOutOfBoundsException("Invalid row " + i);
         }
         if(j < 1) {
-            throw new IllegalArgumentException("Invalid column " + i);
+            throw new IndexOutOfBoundsException("Invalid column " + i);
         }
         if(j > N) {
-            throw new IllegalArgumentException("Invalid column " + i);
+            throw new IndexOutOfBoundsException("Invalid column " + i);
         }
     }
 
