@@ -3,10 +3,10 @@
  */
 public class PercolationStats {
 
-    private int N;
-    private int T;
     private double mean;
     private double stddev;
+    private double confidenceLo;
+    private double confidenceHi;
 
     /**
      *
@@ -14,14 +14,9 @@ public class PercolationStats {
      * @param T
      */
     public PercolationStats(int N, int T) {
-        this.N = N;
-        this.T = T;
-
-        Percolation percolation = null;
-        int[] openCounts = new int[T];
         double[] openCountPercents = new double[T];
         for(int i=0; i<T; i++) {
-            percolation = new Percolation(N);
+            Percolation percolation = new Percolation(N);
             int openCount = 0;
             while(!percolation.percolates()) {
                 int row = StdRandom.uniform(N)+1;
@@ -32,11 +27,12 @@ public class PercolationStats {
                     openCount++;
                 }
             }
-            openCounts[i] = openCount;
             openCountPercents[i] = (double)openCount/((double)(N*N));
         }
         mean = StdStats.mean(openCountPercents);
         stddev = StdStats.stddev(openCountPercents);
+        confidenceLo = mean() - (1.96 * stddev()/ Math.sqrt(T));
+        confidenceHi = mean() + (1.96 * stddev()/ Math.sqrt(T));
     }
 
     /**
@@ -55,17 +51,12 @@ public class PercolationStats {
         return stddev;
     }
 
-    /*
-Upper: mean + 1.96 * deviation  / sqrt(T)
-Lower: mean - 1.96 * deviation  / sqrt(T)
-     */
-
     /**
      * // returns lower bound of the 95% confidence interval
      * @return
      */
     public double confidenceLo()   {
-        return mean() - (1.96 * stddev()/ Math.sqrt(T));
+        return confidenceLo;
     }
 
     /**
@@ -73,7 +64,7 @@ Lower: mean - 1.96 * deviation  / sqrt(T)
      * @return
      */
     public double confidenceHi() {
-        return mean() + (1.96 * stddev()/ Math.sqrt(T));
+        return confidenceHi;
     }
 
     /**
