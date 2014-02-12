@@ -14,6 +14,12 @@ public class PercolationStats {
      * @param T
      */
     public PercolationStats(int N, int T) {
+        if(N <= 0) {
+            throw new IllegalArgumentException("Invalid grid dimension " + N);
+        }
+        if(T <= 0) {
+            throw new IllegalArgumentException("Invalid number of runs " + N);
+        }
         double[] openCountPercents = new double[T];
         for(int i=0; i<T; i++) {
             Percolation percolation = new Percolation(N);
