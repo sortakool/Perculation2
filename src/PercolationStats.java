@@ -82,9 +82,10 @@ public class PercolationStats {
         int T = Integer.valueOf(args[1]);
         PercolationStats stats = new PercolationStats(N, T);
 
-        System.out.println("mean\t\t\t\t\t = " + stats.mean());
-        System.out.println("stddev\t\t\t\t\t = " + stats.stddev());
-        System.out.println("95% confidence interval\t = " + stats.confidenceLo() + ", " + stats.confidenceHi());
+
+        StdOut.println("mean\t\t\t\t\t = " + stats.mean());
+        StdOut.println("stddev\t\t\t\t\t = " + stats.stddev());
+        StdOut.println("95% confidence interval\t = " + stats.confidenceLo() + ", " + stats.confidenceHi());
     }
 
 
