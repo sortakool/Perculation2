@@ -37,7 +37,6 @@ public class Percolation {
         rightColumn = N;
 
         VIRTUAL_TOP = size;
-//        VIRTUAL_BOTTOM = size + 1;
 
         //union top row to VIRTUAL_TOP
         for(int i=0; i<N; i++) {
@@ -47,10 +46,6 @@ public class Percolation {
         //union bottom row to VIRTUAL_BOTTOM
         bottomRowStartIndex = size - N;
         bottomRowIndicesOpen = new boolean[N];
-//        perculatedBottomRowIndices = new boolean[N];
-//        for(int i= bottomRowStartIndex; i<size; i++) {
-//            weightedQuickUnionUF.union(i, VIRTUAL_BOTTOM);
-//        }
     }
 
     /**
@@ -93,10 +88,8 @@ public class Percolation {
                 boolean temp2 = bottomRowIndicesOpen[bottomRowIndex2];
                 if(temp2) {
                     int temp = bottomRowIndex2+bottomRowStartIndex;
-                    if(openArray[temp] && weightedQuickUnionUF.connected(temp, index)) {
-                        if(weightedQuickUnionUF.connected(VIRTUAL_TOP, index) ) {
-                            percolates = true;
-                        }
+                    if(openArray[temp] && weightedQuickUnionUF.connected(temp, VIRTUAL_TOP)) {
+                        percolates = true;
                     }
                 }
             }
