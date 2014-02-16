@@ -3,8 +3,8 @@
  */
 public class Percolation {
 
-    public static final int INVALID_INDEX = -1;
-    public int VIRTUAL_TOP;
+    private static final int INVALID_INDEX = -1;
+    private int VIRTUAL_TOP;
 
     private final int N;
     private final WeightedQuickUnionUF weightedQuickUnionUF;
@@ -23,11 +23,12 @@ public class Percolation {
 
     /**
      * create N-by-N grid, with all sites blocked
+     *
      * @param N
      */
     public Percolation(int N) {
         this.N = N;
-        int size = N*N;
+        int size = N * N;
         int sizePlusVirtualIndexes = size + 1;
         weightedQuickUnionUF = new WeightedQuickUnionUF(sizePlusVirtualIndexes);
         openArray = new boolean[sizePlusVirtualIndexes];
@@ -39,7 +40,7 @@ public class Percolation {
         VIRTUAL_TOP = size;
 
         //union top row to VIRTUAL_TOP
-        for(int i=0; i<N; i++) {
+        for (int i = 0; i < N; i++) {
             weightedQuickUnionUF.union(i, VIRTUAL_TOP);
         }
 
@@ -50,6 +51,7 @@ public class Percolation {
 
     /**
      * open site (row i, column j) if it is not already
+     *
      * @param i
      * @param j
      */
@@ -62,33 +64,34 @@ public class Percolation {
         int bottomIndex = getBottomIndex(i, j);
         int leftIndex = getLeftIndex(i, j);
         int rightIndex = getRightIndex(i, j);
-        if((topIndex != INVALID_INDEX) && openArray[topIndex]) {
+        if ((topIndex != INVALID_INDEX) && openArray[topIndex]) {
             weightedQuickUnionUF.union(topIndex, index);
         }
-        if((bottomIndex != INVALID_INDEX) && openArray[bottomIndex]) {
+        if ((bottomIndex != INVALID_INDEX) && openArray[bottomIndex]) {
             weightedQuickUnionUF.union(bottomIndex, index);
         }
-        if((leftIndex != INVALID_INDEX) && openArray[leftIndex]) {
+        if ((leftIndex != INVALID_INDEX) && openArray[leftIndex]) {
             weightedQuickUnionUF.union(leftIndex, index);
         }
-        if((rightIndex != INVALID_INDEX) && openArray[rightIndex]) {
+        if ((rightIndex != INVALID_INDEX) && openArray[rightIndex]) {
             weightedQuickUnionUF.union(rightIndex, index);
         }
 
         boolean isBottomRow = (index >= bottomRowStartIndex);
         int bottomRowIndex = -1;
-        if(isBottomRow) {
+        if (isBottomRow) {
             bottomRowIndex = index - bottomRowStartIndex;
             bottomRowIndicesOpen[bottomRowIndex] = true;
             bottomOpened = true;
         }
 
-        if(bottomOpened) {
-            for(int bottomRowIndex2=0; bottomRowIndex2<N; bottomRowIndex2++) {
+        if (bottomOpened) {
+            for (int bottomRowIndex2 = 0; bottomRowIndex2 < N; bottomRowIndex2++) {
                 boolean temp2 = bottomRowIndicesOpen[bottomRowIndex2];
-                if(temp2) {
-                    int temp = bottomRowIndex2+bottomRowStartIndex;
-                    if(openArray[temp] && weightedQuickUnionUF.connected(temp, VIRTUAL_TOP)) {
+                if (temp2) {
+                    int temp = bottomRowIndex2 + bottomRowStartIndex;
+                    if (openArray[temp]
+                        && weightedQuickUnionUF.connected(temp, VIRTUAL_TOP)) {
                         percolates = true;
                     }
                 }
@@ -98,62 +101,63 @@ public class Percolation {
 
     private int getTopIndex(int i, int j) {
         int calculatedIndex = INVALID_INDEX;
-        if( (i > topRow) ) {
-            i--;
-            calculatedIndex = getIndex(i, j);
+        if ((i > topRow)) {
+            int temp = i - 1;
+            calculatedIndex = getIndex(temp, j);
         }
         return calculatedIndex;
     }
 
     private int getBottomIndex(int i, int j) {
         int calculatedIndex = INVALID_INDEX;
-        if( (i < bottomRow) ) {
-            i++;
-            calculatedIndex = getIndex(i, j);
+        if ((i < bottomRow)) {
+            int temp = i + 1;
+            calculatedIndex = getIndex(temp, j);
         }
         return calculatedIndex;
     }
 
     private int getLeftIndex(int i, int j) {
         int calculatedIndex = INVALID_INDEX;
-        if( (j > leftColumn) ) {
-            j--;
-            calculatedIndex = getIndex(i, j);
+        if ((j > leftColumn)) {
+            int temp = j - 1;
+            calculatedIndex = getIndex(i, temp);
         }
         return calculatedIndex;
     }
 
     private int getRightIndex(int i, int j) {
         int calculatedIndex = INVALID_INDEX;
-        if( (j < rightColumn) ) {
-            j++;
-            calculatedIndex = getIndex(i, j);
+        if ((j < rightColumn)) {
+            int temp = j + 1;
+            calculatedIndex = getIndex(i, temp);
         }
         return calculatedIndex;
     }
 
     private void validate(int i, int j) {
-        if(i < 1) {
-            throw new IndexOutOfBoundsException ("Invalid row " + i);
-        }
-        if(i > N) {
+        if (i < 1) {
             throw new IndexOutOfBoundsException("Invalid row " + i);
         }
-        if(j < 1) {
+        if (i > N) {
+            throw new IndexOutOfBoundsException("Invalid row " + i);
+        }
+        if (j < 1) {
             throw new IndexOutOfBoundsException("Invalid column " + i);
         }
-        if(j > N) {
+        if (j > N) {
             throw new IndexOutOfBoundsException("Invalid column " + i);
         }
     }
 
     private int getIndex(int i, int j) {
-        int index = ((i-1)*N) + (j-1);
+        int index = ((i - 1) * N) + (j - 1);
         return index;
     }
 
     /**
      * is site (row i, column j) open?
+     *
      * @param i
      * @param j
      * @return
@@ -166,24 +170,27 @@ public class Percolation {
 
     /**
      * is site (row i, column j) full?
+     *
      * @param i
      * @param j
      * @return
      */
     public boolean isFull(int i, int j) {
+        validate(i, j);
         boolean isFull = false;
-        if(percolates()) {
-            validate(i, j);
+        if (percolates) {
             int index = getIndex(i, j);
-            boolean connectedToVirtualTop = weightedQuickUnionUF.connected(index, VIRTUAL_TOP);
+            boolean connectedToVirtualTop =
+                    weightedQuickUnionUF.connected(index, VIRTUAL_TOP);
             isFull = (openArray[index] && connectedToVirtualTop);
-            //not full unil it is also connected to a perculated bottom row index
+            //not full until it is also connected to a perculated bottom row index
         }
         return isFull;
     }
 
     /**
      * does the system percolate?
+     *
      * @return
      */
     public boolean percolates() {
