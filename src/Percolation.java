@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 /**
  * Created by Raymond on 2/10/14.
  */
@@ -8,7 +10,8 @@ public class Percolation {
 
     private final int N;
     private final WeightedQuickUnionUF weightedQuickUnionUF;
-    private final boolean[] openArray;
+    //    private final WeightedQuickUnionUF bottomRowWeightedQuickUnionUF;
+//    private final boolean[] openArray;
     private boolean percolates = false;
     private final int topRow;
     private final int bottomRow;
@@ -16,10 +19,11 @@ public class Percolation {
     private final int rightColumn;
 
     private final int bottomRowStartIndex;
-    private final boolean[] bottomRowIndicesOpen;
-//    private final boolean[] perculatedBottomRowIndices;
+    private final int[] bottomArray;
+    private final byte[] states;
 
     private boolean bottomOpened = false;
+    private final int theVirtualRoot;
 
     /**
      * create N-by-N grid, with all sites blocked
@@ -31,7 +35,7 @@ public class Percolation {
         int size = N * N;
         int sizePlusVirtualIndexes = size + 1;
         weightedQuickUnionUF = new WeightedQuickUnionUF(sizePlusVirtualIndexes);
-        openArray = new boolean[sizePlusVirtualIndexes];
+//        openArray = new boolean[sizePlusVirtualIndexes];
         topRow = 1;
         bottomRow = N;
         leftColumn = 1;
@@ -41,13 +45,58 @@ public class Percolation {
 
         //union top row to VIRTUAL_TOP
         for (int i = 0; i < N; i++) {
-            weightedQuickUnionUF.union(i, VIRTUAL_TOP);
+//            weightedQuickUnionUF.union(i, VIRTUAL_TOP);
+            weightedQuickUnionUF.union(VIRTUAL_TOP, i);
         }
 
-        //union bottom row to VIRTUAL_BOTTOM
+//        bottomRowIndicesOpen = new boolean[N];
+//        bottomRowWeightedQuickUnionUF = new WeightedQuickUnionUF(N);
+        states = new byte[sizePlusVirtualIndexes];
+
+        theVirtualRoot = weightedQuickUnionUF.find(VIRTUAL_TOP);
         bottomRowStartIndex = size - N;
-        bottomRowIndicesOpen = new boolean[N];
+        bottomArray = new int[N];
+        for(int temp=0; temp<N; temp++) {
+            bottomArray[temp] = temp+bottomRowStartIndex;
+        }
+        System.out.println(Arrays.toString(bottomArray));
     }
+
+
+    private static class State {
+        public static final byte OPEN = 1 << 1;
+        public static final byte FULL = 1 << 2;
+        public static final byte CONNECTED_TO_TOP = 1 << 3;
+        public static final byte CONNECTED_TO_BOTTOM = 1 << 4;
+    }
+
+    private boolean isOpen(byte[] tempArray, int index) {
+        return isSet(tempArray, index, State.OPEN);
+    }
+
+    private boolean isFull(byte[] tempArray, int index) {
+        return isSet(tempArray, index, State.FULL);
+    }
+
+    private boolean isConnectedToTop(byte[] tempArray, int index) {
+        return isSet(tempArray, index, State.CONNECTED_TO_TOP);
+    }
+
+    private boolean isConnectedToBottom(byte[] tempArray, int index) {
+        return isSet(tempArray, index, State.CONNECTED_TO_BOTTOM);
+    }
+
+    private boolean isSet(byte[] tempArray, int index, byte bit) {
+        byte value = tempArray[index];
+        return ((value & bit) != 0);
+    }
+
+    private int setBit(byte[] tempArray, int index, byte bit) {
+        byte newBitValue = (byte) (tempArray[index] | bit);
+        tempArray[index] = newBitValue;
+        return newBitValue;
+    }
+
 
     /**
      * open site (row i, column j) if it is not already
@@ -58,45 +107,260 @@ public class Percolation {
     public void open(int i, int j) {
         validate(i, j);
         int index = getIndex(i, j);
-        openArray[index] = true;
+//        openArray[index] = true;
+        setBit(states, index, State.OPEN);
+
+        int root = weightedQuickUnionUF.find(index);
+        int virtualRoot = weightedQuickUnionUF.find(VIRTUAL_TOP);
+
+        StringBuilder bottomSB = new StringBuilder("\tbottomRoots:\t");
+        for(int temp=((N*N)-N); temp<(N*N); temp++) {
+            int[] xy = getCoordinate(temp);
+            int bottomRoot = weightedQuickUnionUF.find(temp);
+            bottomSB.append("[").append(xy[0]).append(",").append(xy[1]).append("@").append(temp).append("]").append("=").append(bottomRoot).append("\t");
+        }
+
+        boolean isTop = isTop(i);
+        if (isTop) {
+            setBit(states, index, State.FULL);
+            setBit(states, index, State.CONNECTED_TO_TOP);
+        }
+
+        boolean isBottom = isBottom(i);
+        if (isBottom) {
+            setBit(states, index, State.CONNECTED_TO_BOTTOM);
+            bottomOpened = true;
+        }
 
         int topIndex = getTopIndex(i, j);
         int bottomIndex = getBottomIndex(i, j);
         int leftIndex = getLeftIndex(i, j);
         int rightIndex = getRightIndex(i, j);
-        if ((topIndex != INVALID_INDEX) && openArray[topIndex]) {
-            weightedQuickUnionUF.union(topIndex, index);
+
+        int topIndexRoot = -1;
+        int bottomIndexRoot = -1;
+        int leftIndexRoot = -1;
+        int rightIndexRoot = -1;
+
+        boolean isTopOpen = false;
+        boolean isBottomOpen = false;
+        boolean isLeftOpen = false;
+        boolean isRightOpen = false;
+
+        if ((topIndex != INVALID_INDEX) && isOpen(states, topIndex)) {
+            isTopOpen = true;
+
+            topIndexRoot = weightedQuickUnionUF.find(topIndex);
+            if( (root != topIndexRoot) ) {
+                weightedQuickUnionUF.union(topIndex, index);
+            }
+
+            if (isFull(states, topIndex)) {
+                setBit(states, index, State.FULL);
+            }
+            if (isConnectedToTop(states, topIndex)) {
+                setBit(states, index, State.CONNECTED_TO_TOP);
+            }
+            if (isConnectedToBottom(states, topIndex)) {
+                setBit(states, index, State.CONNECTED_TO_BOTTOM);
+            }
+
+
         }
-        if ((bottomIndex != INVALID_INDEX) && openArray[bottomIndex]) {
-            weightedQuickUnionUF.union(bottomIndex, index);
+
+        if ((bottomIndex != INVALID_INDEX) && isOpen(states, bottomIndex)) {
+            isBottomOpen = true;
+
+            bottomIndexRoot = weightedQuickUnionUF.find(bottomIndex);
+            if( (root != bottomIndexRoot) || (topIndexRoot != bottomIndexRoot)) {
+                weightedQuickUnionUF.union(bottomIndex, index);
+            }
+
+            if (isFull(states, bottomIndex)) {
+                setBit(states, index, State.FULL);
+            }
+            if (isConnectedToTop(states, bottomIndex)) {
+                setBit(states, index, State.CONNECTED_TO_TOP);
+            }
+            if (isConnectedToBottom(states, bottomIndex)) {
+                setBit(states, index, State.CONNECTED_TO_BOTTOM);
+            }
+
+            int tempJ = j;
+            for(int temp=i; temp<=N; temp++) {
+                int tempIndex = getIndex(temp, tempJ);
+                if(isConnectedToBottom(states, tempIndex)) {
+                    setBit(states, tempIndex, State.CONNECTED_TO_BOTTOM);
+                }
+                else {
+                    break;
+                }
+            }
+
+
         }
-        if ((leftIndex != INVALID_INDEX) && openArray[leftIndex]) {
+
+        if ((leftIndex != INVALID_INDEX) && isOpen(states, leftIndex)) {
+            isLeftOpen = true;
+
+            leftIndexRoot = weightedQuickUnionUF.find(leftIndex);
+
+            if( (root != leftIndexRoot) || (topIndexRoot != leftIndexRoot)|| (bottomIndexRoot != leftIndexRoot)) {
+                weightedQuickUnionUF.union(leftIndex, index);
+            }
+
             weightedQuickUnionUF.union(leftIndex, index);
-        }
-        if ((rightIndex != INVALID_INDEX) && openArray[rightIndex]) {
-            weightedQuickUnionUF.union(rightIndex, index);
+            if (isFull(states, leftIndex)) {
+                setBit(states, index, State.FULL);
+            }
+            if (isConnectedToTop(states, leftIndex)) {
+                setBit(states, index, State.CONNECTED_TO_TOP);
+            }
+            if (isConnectedToBottom(states, leftIndex)) {
+                setBit(states, index, State.CONNECTED_TO_BOTTOM);
+            }
+
+            int tempJ = j-1;
+            for(int temp=i; temp<=N; temp++) {
+                int tempIndex = getIndex(temp, tempJ);
+                if(isConnectedToBottom(states, tempJ)) {
+                    setBit(states, tempIndex, State.CONNECTED_TO_BOTTOM);
+                }
+                else {
+                    break;
+                }
+            }
+
+
         }
 
-        boolean isBottomRow = (index >= bottomRowStartIndex);
-        int bottomRowIndex = -1;
-        if (isBottomRow) {
-            bottomRowIndex = index - bottomRowStartIndex;
-            bottomRowIndicesOpen[bottomRowIndex] = true;
-            bottomOpened = true;
+        if ((rightIndex != INVALID_INDEX) && isOpen(states, rightIndex)) {
+            isRightOpen = true;
+
+            rightIndexRoot = weightedQuickUnionUF.find(rightIndex);
+
+            if( (root != rightIndexRoot) || (topIndexRoot != rightIndexRoot)|| (bottomIndexRoot != rightIndexRoot)|| (leftIndexRoot != rightIndexRoot)) {
+                weightedQuickUnionUF.union(rightIndex, index);
+            }
+
+            if (isFull(states, rightIndex)) {
+                setBit(states, index, State.FULL);
+            }
+            if (isConnectedToTop(states, rightIndex)) {
+                setBit(states, index, State.CONNECTED_TO_TOP);
+            }
+            if (isConnectedToBottom(states, rightIndex)) {
+                setBit(states, index, State.CONNECTED_TO_BOTTOM);
+            }
+
+            int tempJ = j+1;
+            for(int temp=i; temp<=N; temp++) {
+                int tempIndex = getIndex(temp, tempJ);
+                if(isConnectedToBottom(states, tempJ)) {
+                    setBit(states, tempIndex, State.CONNECTED_TO_BOTTOM);
+                }
+                else {
+                    break;
+                }
+            }
+
+
         }
 
-        if (bottomOpened) {
-            for (int bottomRowIndex2 = 0; bottomRowIndex2 < N; bottomRowIndex2++) {
-                boolean temp2 = bottomRowIndicesOpen[bottomRowIndex2];
-                if (temp2) {
-                    int temp = bottomRowIndex2 + bottomRowStartIndex;
-                    if (openArray[temp]
-                        && weightedQuickUnionUF.connected(temp, VIRTUAL_TOP)) {
-                        percolates = true;
-                    }
+        int myNewRoot = weightedQuickUnionUF.find(index);
+        int newRoot = -1;
+        int newTopIndexRoot = -1;
+        int newBottomIndexRoot = -1;
+        int newLeftIndexRoot = -1;
+        int newRightIndexRoot = -1;
+
+        int toFind = -1;
+
+        if(isTopOpen) {
+            newTopIndexRoot = weightedQuickUnionUF.find(topIndex);
+            if(topIndexRoot != newTopIndexRoot) {
+                newRoot = newTopIndexRoot;
+                if(newRoot == theVirtualRoot) {
+                    toFind = topIndexRoot;
                 }
             }
         }
+        if(isBottomOpen) {
+            newBottomIndexRoot = weightedQuickUnionUF.find(bottomIndex);
+            if(bottomIndexRoot != newBottomIndexRoot) {
+                newRoot = newBottomIndexRoot;
+                if(newRoot == theVirtualRoot) {
+                    toFind = bottomIndexRoot;
+                }
+            }
+        }
+        if(isLeftOpen) {
+            newLeftIndexRoot = weightedQuickUnionUF.find(leftIndex);
+            if(leftIndexRoot != newLeftIndexRoot) {
+                newRoot = newLeftIndexRoot;
+                if(newRoot == theVirtualRoot) {
+                    toFind = leftIndexRoot;
+                }
+            }
+        }
+        if(isRightOpen) {
+            newRightIndexRoot = weightedQuickUnionUF.find(rightIndex);
+            if(rightIndexRoot != newRightIndexRoot) {
+                newRoot = newRightIndexRoot;
+                if(newRoot == theVirtualRoot) {
+                    toFind = rightIndexRoot;
+                }
+            }
+        }
+
+        int newVirtualRoot = weightedQuickUnionUF.find(VIRTUAL_TOP);
+        System.out.println("open["+i+","+j+"]:"
+                + "\n\t" + "theVirtualRoot=" + theVirtualRoot
+                + "\n\t" + "myNewRoot=" + myNewRoot
+                + "\n\t" + "virtualRoot=" + virtualRoot + ", newVirtualRoot=" + newVirtualRoot
+                + "\n\t" + printIndex(index) + "root=" + root + ", newRoot=" + newRoot
+                + "\n\t" + printIndex(topIndex) + "topIndexRoot=" + topIndexRoot + ", newTopIndexRoot=" + newTopIndexRoot
+                + "\n\t" + printIndex(bottomIndex) + "bottomIndexRoot=" + bottomIndexRoot + ", newBottomIndexRoot=" + newBottomIndexRoot
+                + "\n\t" + printIndex(leftIndex) + "leftIndexRoot=" + leftIndexRoot + ", newLeftIndexRoot=" + newLeftIndexRoot
+                + "\n\t" + printIndex(rightIndex) + "rightIndexRoot=" + rightIndexRoot + ", newRightIndexRoot=" + newRightIndexRoot
+        );
+        StringBuilder newBottomSB = new StringBuilder("\tnewBottomRoots:\t");
+        for(int temp=((N*N)-N); temp<(N*N); temp++) {
+            int[] xy = getCoordinate(temp);
+            int bottomRoot = weightedQuickUnionUF.find(temp);
+            newBottomSB.append("[").append(xy[0]).append(",").append(xy[1]).append("@").append(temp).append("]").append("=").append(bottomRoot).append("\t");
+        }
+        System.out.println(bottomSB.toString());
+        System.out.println(newBottomSB.toString());
+
+        if(isBottom) {
+            bottomArray[index-bottomRowStartIndex] = myNewRoot;
+        }
+
+        if(toFind != -1) {
+            for(int temp=0; temp < N; temp++) {
+                if(bottomArray[temp] == toFind) {
+                    bottomArray[temp] = theVirtualRoot;
+                    percolates = true;
+                }
+            }
+        }
+    }
+
+    private String printIndex(int index) {
+        StringBuilder sb = new StringBuilder();
+        int[] xy = getCoordinate(index);
+        sb.append("[").append(xy[0]).append(",").append(xy[1]).append("@").append(index).append("] ");
+        return sb.toString();
+    }
+
+
+    private boolean isTop(int i) {
+        return i == 1;
+    }
+
+    private boolean isBottom(int i) {
+        return i == N;
     }
 
     private int getTopIndex(int i, int j) {
@@ -155,6 +419,13 @@ public class Percolation {
         return index;
     }
 
+    private int[] getCoordinate(int index) {
+        int[] xy = new int[2];
+        xy[0] = (index / N) + 1;
+        xy[1] = (index % N) + 1;
+        return xy;
+    }
+
     /**
      * is site (row i, column j) open?
      *
@@ -165,10 +436,13 @@ public class Percolation {
     public boolean isOpen(int i, int j) {
         validate(i, j);
         int index = getIndex(i, j);
-        return openArray[index];
+        return isOpen(states, index);
     }
 
     /**
+     * A full site is an open site that can be connected
+     * to an open site in the top row
+     * via a chain of neighboring (left, right, up, down) open sites.
      * is site (row i, column j) full?
      *
      * @param i
@@ -177,13 +451,11 @@ public class Percolation {
      */
     public boolean isFull(int i, int j) {
         validate(i, j);
+        int index = getIndex(i, j);
+//        return isFull(states, index);
         boolean isFull = false;
-        if (percolates) {
-            int index = getIndex(i, j);
-            boolean connectedToVirtualTop =
-                    weightedQuickUnionUF.connected(index, VIRTUAL_TOP);
-            isFull = (openArray[index] && connectedToVirtualTop);
-            //not full until it is also connected to a perculated bottom row index
+        if (isOpen(states, index)) {
+            isFull = weightedQuickUnionUF.connected(index, VIRTUAL_TOP);
         }
         return isFull;
     }
